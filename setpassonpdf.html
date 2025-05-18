@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Password Protected PDF Uploader</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+</head>
+<body>
+  <h1>PDF パスワード保護</h1>
+  <input type="file" id="pdfFile" accept="application/pdf">
+  <input type="password" id="pdfPassword" placeholder="パスワード">
+  <button onclick="protectPDF()">パスワード付きPDFをダウンロード</button>
+
+  <script>
+    async function protectPDF() {
+      const fileInput = document.getElementById('pdfFile');
+      const password = document.getElementById('pdfPassword').value;
+
+      if (!fileInput.files.length) {
+        alert('PDFファイルを選択してください。');
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const arrayBuffer = await file.arrayBuffer();
+      const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+
+      // パスワード設定
+      pdfDoc.encrypt({
+        userPassword: password,
+        ownerPassword: password,
+        permissions: { printing: 'highResolution' }
+      });
+
+      const pdfBytes = await pdfDoc.save();
+
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(new Blob([pdfBytes], { type: 'application/pdf' }));
+      link.download = 'protected.pdf';
+      link.click();
+    }
+  </script>
+</body>
+</html>
