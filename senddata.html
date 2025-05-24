@@ -1,43 +1,113 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>複数人フォーム送信</title>
+  <meta charset="UTF-8" />
+  <title>ラップタイム入力フォーム</title>
+  <style>
+    body { font-family: sans-serif; }
+    .swimmer-block { border: 1px solid #ccc; padding: 1em; margin-bottom: 1em; }
+    label { display: block; margin-top: 0.5em; }
+    input[type="text"], input[type="number"] { width: 8em; }
+  </style>
 </head>
 <body>
-  <h2>複数人データ送信フォーム</h2>
+  <h2>ラップタイム入力フォーム</h2>
 
-  <div id="formContainer">
-    <div class="person">
-      <label>名前: <input type="text" name="name" required></label>
-      <label>年齢: <input type="number" name="age" required></label>
-    </div>
-  </div>
+  <label>大会名:
+    <select id="eventName">
+      <option value="第65回東京大会">第65回東京大会</option>
+      <option value="第72回全国大会">第72回全国大会</option>
+    </select>
+  </label>
 
-  <button id="addPerson">＋追加</button>
-  <button id="submitForm">送信</button>
+  <label>水路:
+    <select id="courseType">
+      <option value="長水路">長水路</option>
+      <option value="短水路">短水路</option>
+    </select>
+  </label>
+
+  <label>種目:
+    <select id="stroke">
+      <option value="自由形">自由形</option>
+      <option value="背泳ぎ">背泳ぎ</option>
+      <option value="平泳ぎ">平泳ぎ</option>
+      <option value="バタフライ">バタフライ</option>
+      <option value="個人メドレー">個人メドレー</option>
+    </select>
+  </label>
+
+  <label>距離:
+    <select id="distance">
+      <option value="50">50m</option>
+      <option value="100">100m</option>
+      <option value="200">200m</option>
+      <option value="400">400m</option>
+      <option value="800">800m</option>
+      <option value="1500">1500m</option>
+    </select>
+  </label>
+
+  <button id="setupRace">決定</button>
+
+  <div id="formArea"></div>
+  <button id="addSwimmer" style="display:none;">＋選手追加</button>
+  <button id="submitData" style="display:none;">送信</button>
 
   <script>
-    const formContainer = document.getElementById("formContainer");
+    const formArea = document.getElementById("formArea");
+    let lapPoints = [];
 
-    document.getElementById("addPerson").addEventListener("click", () => {
-      const clone = formContainer.firstElementChild.cloneNode(true);
-      clone.querySelectorAll("input").forEach(input => input.value = "");
-      formContainer.appendChild(clone);
+    document.getElementById("setupRace").addEventListener("click", () => {
+      const distance = parseInt(document.getElementById("distance").value, 10);
+      lapPoints = Array.from({ length: Math.floor(distance / 25) + 1 }, (_, i) => i * 25);
+      formArea.innerHTML = "";
+      addSwimmerBlock();
+      document.getElementById("addSwimmer").style.display = "inline";
+      document.getElementById("submitData").style.display = "inline";
     });
 
-    document.getElementById("submitForm").addEventListener("click", () => {
-      const people = Array.from(document.querySelectorAll(".person")).map(person => {
-        return {
-          name: person.querySelector('[name="name"]').value,
-          age: person.querySelector('[name="age"]').value
-        };
+    function addSwimmerBlock() {
+      const div = document.createElement("div");
+      div.className = "swimmer-block";
+      div.innerHTML = `
+        <label>名前: <input type="text" class="name" required></label>
+        <label>リアクションタイム: <input type="number" class="reaction" step="0.01"></label>
+        ${lapPoints.slice(1).map(lap => `
+          <label>${lap}m: <input type="number" class="lap" data-distance="${lap}" step="0.01"></label>
+        `).join("")}
+      `;
+      formArea.appendChild(div);
+    }
+
+    document.getElementById("addSwimmer").addEventListener("click", addSwimmerBlock);
+
+    document.getElementById("submitData").addEventListener("click", () => {
+      const eventName = document.getElementById("eventName").value;
+      const courseType = document.getElementById("courseType").value;
+      const stroke = document.getElementById("stroke").value;
+      const distance = document.getElementById("distance").value;
+
+      const swimmers = Array.from(document.getElementsByClassName("swimmer-block")).map(block => {
+        const name = block.querySelector(".name").value;
+        const reaction = block.querySelector(".reaction").value;
+        const lapInputs = block.querySelectorAll(".lap");
+        const laps = {};
+        lapInputs.forEach(input => {
+          laps[input.dataset.distance] = input.value;
+        });
+        return { name, reaction, laps };
       });
 
-      const json = JSON.stringify(people);
-      const url = "https://script.google.com/macros/s/AKfycbygn8UW9Pl3Af4k9iYsjFfGvJUigrbcdavwFqnJamaqYk7IPLLYhQxdJ5d8Qc0KvIa9OA/exec" +
-                  "?data=" + encodeURIComponent(json);
+      const payload = {
+        eventName,
+        courseType,
+        stroke,
+        distance,
+        swimmers
+      };
 
+      const url = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec?data=" + encodeURIComponent(JSON.stringify(payload));
 
       fetch(url)
         .then(res => res.text())
